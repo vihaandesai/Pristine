@@ -13,8 +13,14 @@ export default function Home() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Scroll reveal observer
+  // Scroll reveal observer — adds .enhanced to hide, then .visible to show
+  // If JS doesn't run, .reveal stays visible (no .enhanced added)
   useEffect(() => {
+    // First add .enhanced to all reveals (hides them)
+    document.querySelectorAll(".reveal").forEach((el) => {
+      el.classList.add("enhanced");
+    });
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -25,7 +31,7 @@ export default function Home() {
       },
       { threshold: 0.15 }
     );
-    document.querySelectorAll(".reveal").forEach((el) => observer.observe(el));
+    document.querySelectorAll(".reveal.enhanced").forEach((el) => observer.observe(el));
     return () => observer.disconnect();
   }, []);
 
