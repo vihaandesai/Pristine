@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Pristine — Premium Digital Experiences",
+  title: "Pristine — Luxury Jewelry, Redefined",
   description:
-    "Pristine crafts elevated digital products with obsessive attention to detail. Design, build, and ship with confidence.",
+    "Subscribe to luxury. Wear lab-grown diamond jewelry, swap every month. The world's most flexible jewelry subscription.",
 };
 
 export default function RootLayout({
@@ -28,7 +28,7 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-black text-white">
+      <body className="min-h-full flex flex-col bg-[#0a0012] text-white">
         {children}
       </body>
     </html>
