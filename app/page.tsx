@@ -1,6 +1,140 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
+
+/* ── Scroll-driven frame sequence animation ──
+ * 300 JPG frames in /frames/ — canvas draws the frame
+ * corresponding to scroll progress through a tall section.
+ */
+const TOTAL_FRAMES = 300;
+
+function ScrollFrameSection() {
+  const sectionRef = useRef<HTMLElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imagesRef = useRef<HTMLImageElement[]>([]);
+  const [loaded, setLoaded] = useState(0);
+  const rafRef = useRef<number>(0);
+
+  // Preload all frames
+  useEffect(() => {
+    const imgs: HTMLImageElement[] = [];
+    let count = 0;
+    for (let i = 1; i <= TOTAL_FRAMES; i++) {
+      const img = new Image();
+      img.src = `/frames/ezgif-frame-${String(i).padStart(3, "0")}.jpg`;
+      img.onload = () => {
+        count++;
+        setLoaded(count);
+      };
+      imgs.push(img);
+    }
+    imagesRef.current = imgs;
+    return () => { imgs.length = 0; };
+  }, []);
+
+  const drawFrame = useCallback((idx: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const img = imagesRef.current[idx];
+    if (img && img.complete && img.naturalWidth > 0) {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      // cover fit
+      const ar = img.naturalWidth / img.naturalHeight;
+      const car = w / h;
+      let dw = w, dh = h, dx = 0, dy = 0;
+      if (ar > car) { dh = h; dw = h * ar; dx = (w - dw) / 2; }
+      else { dw = w; dh = w / ar; dy = (h - dh) / 2; }
+      ctx.drawImage(img, dx, dy, dw, dh);
+    }
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    const onScroll = () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => {
+        if (!mounted) return;
+        const sec = sectionRef.current;
+        if (!sec) return;
+        const rect = sec.getBoundingClientRect();
+        const vh = window.innerHeight;
+        // progress: 0 when section top hits viewport bottom, 1 when section bottom hits viewport top
+        const total = sec.offsetHeight - vh;
+        const scrolled = -rect.top;
+        const progress = Math.max(0, Math.min(1, scrolled / total));
+        const frameIdx = Math.min(TOTAL_FRAMES - 1, Math.floor(progress * (TOTAL_FRAMES - 1)));
+        drawFrame(frameIdx);
+        // Reveal text elements based on progress vs data-mid
+        const texts = sec.querySelectorAll(".reveal-text");
+        texts.forEach((el) => {
+          const mid = parseFloat(el.getAttribute("data-mid") || "0.5");
+          const dist = Math.abs(progress - mid);
+          el.classList.toggle("reveal-in", dist < 0.15);
+        });
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => {
+      mounted = false;
+      window.removeEventListener("scroll", onScroll);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [drawFrame, loaded]);
+
+  const pct = Math.round((loaded / TOTAL_FRAMES) * 100);
+
+  return (
+    <section ref={sectionRef} className="relative" style={{ height: "200vh" }}>
+      {/* Sticky canvas container */}
+      <div className="sticky top-0 h-screen w-full overflow-hidden flex items-center justify-center">
+        <canvas
+          ref={canvasRef}
+          className="w-full h-full object-cover"
+          style={{ display: loaded > 0 ? "block" : "none" }}
+        />
+        {/* Loading overlay */}
+        {loaded < TOTAL_FRAMES && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black z-10">
+            <div className="text-purple-400 text-sm tracking-widest mb-4">LOADING ANIMATION</div>
+            <div className="w-48 h-1 bg-purple-900/40 rounded-full overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-purple-500 to-fuchsia-500 transition-all duration-300" style={{ width: `${pct}%` }} />
+            </div>
+            <div className="text-white/30 text-xs mt-3">{pct}%</div>
+          </div>
+        )}
+        {/* Text overlay — fades in/out based on scroll */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-20">
+          <div className="text-center px-6">
+            <p className="text-sm text-purple-400 mb-3 tracking-wider reveal-text" data-mid="0.15">THE EXPERIENCE</p>
+            <h2 className="text-4xl md:text-7xl font-bold tracking-tight reveal-text" data-mid="0.25">
+              Luxury that <span className="gradient-text">moves with you.</span>
+            </h2>
+            <p className="text-white/50 max-w-xl mx-auto mt-6 text-lg reveal-text" data-mid="0.35">
+              From the moment it arrives to the moment you swap — every detail designed for delight.
+            </p>
+            <p className="text-white/30 max-w-md mx-auto mt-12 text-sm reveal-text" data-mid="0.75">
+              Keep scrolling to see the full experience unfold.
+            </p>
+          </div>
+        </div>
+        {/* Gradient vignette for readability */}
+        <div className="absolute inset-0 pointer-events-none z-15" style={{ background: "radial-gradient(ellipse at center, transparent 30%, rgba(10,5,20,0.5) 100%)" }} />
+        {/* Bottom fade into page */}
+        <div className="absolute bottom-0 left-0 right-0 h-32 pointer-events-none z-15" style={{ background: "linear-gradient(to bottom, transparent, #0a0510)" }} />
+      </div>
+    </section>
+  );
+}
 
 export default function Home() {
   const [scrollY, setScrollY] = useState(0);
@@ -255,20 +389,12 @@ export default function Home() {
           </div>
         </section>
 
-        {/* === SCROLL ANIMATION SHOWCASE — Ring on hand === */}
-        <section className="py-32 px-6 md:px-12 relative overflow-hidden">
-          <div className="max-w-5xl mx-auto text-center">
-            <div className="reveal">
-              <p className="text-sm text-purple-400 mb-3 tracking-wider">THE EXPERIENCE</p>
-              <h2 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">
-                Luxury that <span className="gradient-text">moves with you.</span>
-              </h2>
-              <p className="text-white/40 max-w-xl mx-auto mb-16">
-                From the moment it arrives to the moment you swap — every detail designed for delight.
-              </p>
-            </div>
+        {/* === SCROLL-DRIVEN VIDEO ANIMATION — Frame sequence === */}
+        <ScrollFrameSection />
 
-            {/* Animated ring sequence */}
+        {/* === EXPERIENCE CARDS === */}
+        <section className="py-24 px-6 md:px-12 relative overflow-hidden">
+          <div className="max-w-5xl mx-auto text-center">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               {[
                 { emoji: "📭", label: "Unbox", desc: "Signature purple packaging" },
@@ -282,11 +408,6 @@ export default function Home() {
                     <h3 className="text-lg font-semibold mb-1">{step.label}</h3>
                     <p className="text-white/40 text-xs">{step.desc}</p>
                   </div>
-                  {i < 3 && (
-                    <div className="hidden md:block absolute">
-                      <svg width="40" height="20" className="text-purple-400/30"><path d="M0 10 L35 10 M30 5 L35 10 L30 15" stroke="currentColor" strokeWidth="1.5" fill="none" /></svg>
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
