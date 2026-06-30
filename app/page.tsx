@@ -94,7 +94,7 @@ function ScrollFrameSection() {
   const pct = Math.round((loaded / TOTAL_FRAMES) * 100);
 
   return (
-    <section ref={sectionRef} className="relative" style={{ height: "200vh" }}>
+    <section ref={sectionRef} className="relative" style={{ height: "250vh", backgroundColor: "#0a0510" }}>
       {/* Sticky canvas container */}
       <div className="sticky top-0 h-screen w-full overflow-hidden flex items-center justify-center">
         <canvas
@@ -235,6 +235,9 @@ export default function Home() {
             </div>
           )}
         </nav>
+
+        {/* === SCROLL-DRIVEN VIDEO ANIMATION — First thing user sees === */}
+        <ScrollFrameSection />
 
         {/* === HERO === */}
         <section className="relative min-h-screen flex items-center justify-center px-6 md:px-12 pt-20">
@@ -388,9 +391,6 @@ export default function Home() {
             </div>
           </div>
         </section>
-
-        {/* === SCROLL-DRIVEN VIDEO ANIMATION — Frame sequence === */}
-        <ScrollFrameSection />
 
         {/* === EXPERIENCE CARDS === */}
         <section className="py-24 px-6 md:px-12 relative overflow-hidden">
